@@ -26,12 +26,14 @@ def analyze_data():
         .select_related('station__location__city', 'station__location__state',
                         'station__location__country') \
         .values('check_value', 'station__user__username',
+                'values',
                 'measurement__name',
                 'measurement__max_value',
                 'measurement__min_value',
                 'station__location__city__name',
                 'station__location__state__name',
                 'station__location__country__name')
+    
     alerts = 0
     for item in aggregation:
         alert = False
@@ -47,6 +49,13 @@ def analyze_data():
 
         if item["check_value"] > max_value or item["check_value"] < min_value:
             alert = True
+
+        if item['values'].count(0) > 10:
+            message = "ALERT  {} {} {} {}".format("Damaged sensor. Should be replaced.", city, country, user)
+            topic = '{}/{}/{}/{}/in'.format(country, state, city, user)
+            print(datetime.now(), "Sending alert to {} {}".format(topic, variable))
+            client.publish(topic, message)
+            alerts += 1
 
         if alert:
             message = "ALERT {} {} {}".format(variable, min_value, max_value)
